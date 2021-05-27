@@ -1,3 +1,37 @@
+## ref 속성값으로 자식 요소에 접근하기
+
+### useRef()
+
+
+
+- 특정 요소의 크기를 가져온다거나, 포커스를 설정해야한다거나 특정 DOM을 선택해야할 상황 
+
+```javascript
+import React, { useRef , useEffect } from 'react'
+
+export default function App() {
+    // 자식요소에 직접 접근할 수 있다.
+    const inputRef = useRef();
+    useEffect(()=> {
+        //current 실제 돔을 가리키게 된다.
+        // useeffect 안에서 하는 것에 주목 @
+        // 실제 돔 요소는 랜더링 결과가 실제 돔에 반영된 후에 접근할 수 있기 때문에 부수효과 함수에서 접근할 수 있다.
+        
+        inputRef.current.focus()
+    }, [])
+    return(
+        <div>
+            <input type = 'text' ref ={inputRef} />
+            {/* <Box ref={inputRef} />  */}
+            <button>저장</button>
+        </div>
+    )
+}
+```
+
+- 컴포넌트 안에서 조회 및 수정 가능한 변수를 관리하는 용도 
+
+```javascript
 import React, { useRef , useEffect } from 'react'
 
 export default function App() {
@@ -59,3 +93,32 @@ const BOX_LIST = [
     { id: 6, width: 60 },
     { id: 7, width: 120 },
 ]
+```
+
+#### 주의할 점!
+
+- input 요소가 존재하지 않을 때 -> null 값일 때 
+
+  - 조건부 렌더링에 사용된 요소의 ref객체는 current 요소를 검사해야한다
+  - <button onClick={() => inputRef.current && inputRef.crruent.focus()}>
+
+  ```javascript
+  export default function App() {
+      const inputRef = useRef()
+      const [showText, setShowText] = useState(true)
+  
+      return (
+          <div>
+              {showText && <input type='text' ref={inputRef} /> }
+              <button onClick = {()=> setShowText(!showText)}>
+                  텍스트 보이기/ 가리기
+              </button>
+              <button onClick={() => inputRef.current && inputRef.crruent.focus()}>
+                  텍스트로 이동 
+              </button>
+          </div>
+      )
+  }
+  ```
+
+  

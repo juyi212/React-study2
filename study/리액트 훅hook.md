@@ -9,7 +9,9 @@
 
   - batchedUpdates : 외부에서 호출 할 경우에 배치로 다루기 위함 
 
-- **useEffect** : 컴포넌트가 렌더링된 후에 호출 
+  #### **useEffect** 
+
+  > 컴포넌트가 **렌더링된 후에 호출** 
 
   - 렌더링 결과가 실제 돔에 반영되고 비동기로 호출된다.
 
@@ -42,3 +44,56 @@
     
 
   - 훅은 함수형 컴포넌트 또는 커스텀 훅 안에서만 호출되어야 한다.
+  
+  
+
+#### useMemo
+
+> 계산량이 많은 함수의 반환값을 재활용하는 용도로 사용
+
+
+
+```javascript
+import React, { useState, useMemo } from 'react'
+
+
+export default function App() {
+  const [v1, setV1] = useState(0)
+  const [v2, setV2] = useState(0)
+  const [v3, setV3] = useState(0)
+    // [v1,v2] 가 하나라도 변경되면 실행된다.
+    // 아니면 이전의 실행했던 값을 재활용 한다 ! 의존성 배열을 쓴다.
+    const value = useMemo(()=> runExpensiveJob(v1, v2), [v1, v2])
+    return(
+      <>
+        <p>{`value is ${value}`}</p>
+        <button
+          onClick={() => {
+            setV1(Math.random())
+            setV2(Math.random())
+          }}
+        >
+          v1/v2 수정
+        </button>
+        <p>{`v3 is ${v3}`}</p>
+        <button onClick={() => setV3(Math.random())}> v3수정</button>     
+      
+      </>
+    ) 
+}
+function runExpensiveJob(v1, v2) {
+  console.log('function called')
+  return v1 + v2 ;
+}
+```
+
+
+
+#### useCallback
+
+> 메모이제이션을 사용하는데 함수 메모이제이션에 특화된 훅이다.
+>
+> 자식 컴포넌트 입장에서 불필요한 랜더링을 막을 수 있다. (코드 참고)
+
+
+

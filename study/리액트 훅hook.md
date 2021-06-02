@@ -53,7 +53,7 @@
 
 
 
-```javascript
+```react
 import React, { useState, useMemo } from 'react'
 
 
@@ -91,9 +91,279 @@ function runExpensiveJob(v1, v2) {
 
 #### useCallback
 
-> 메모이제이션을 사용하는데 함수 메모이제이션에 특화된 훅이다.
+> 메모이제이션을 사용하는데 **함수 메모이제이션에 특화된 훅**이다.
 >
 > 자식 컴포넌트 입장에서 불필요한 랜더링을 막을 수 있다. (코드 참고)
 
+```React
+import React, { useState, useMemo } from 'react'
 
+
+export default function App() {
+  const [name, setName] = useState('')
+  const [age, setAge] = useState(0)
+  const [V1, setV1] = useState(0)
+  // 이렇게 함수를 입력해서 속성값으로 전달할 때는 이 컴포넌트가 랜더링 될때마다 새로운 함수가 
+  // 생성되고 랜더링 되서 자식 컴포넌트인 useedit은 값이 변경이 안되더라도 불필요하게 랜더링 값을 받아야한다
+  // 이럴때 useCallback 함수를 사용한다. 의존성 배열 사용 
+  const onSave = useCallback(() => {saveToServer((name, age), [name, age])})
+  return(
+    <div>
+      <p>{`name is ${name}`}</p>
+      <p>{`age is ${age}`}</p> 
+      <UserEdit
+        onSave={}
+        setName ={setName}
+        setAge ={setAge}
+      />
+      <p>{`v1 : ${v1}`}</p>
+      <button onClick={() => setV1(Math.random())}>v1 수정</button>
+    </div>
+  )
+}
+
+const UserEdit = React.memo(function ({ onSave, setName, setAge }){
+  console.log('UserEdit render')
+  return null
+})
+
+function saveToServer(name, age) {}
+```
+
+
+
+
+
+#### useReducer
+
+> 여러 개의 상태값을 관리할 때는 이 훅을 사용하는 것이 좋다!
+
+- Redux 와 비슷하다 (상태값 관리) / 로직 분리가 되어 관리가 쉽다
+
+```React
+import React, { useReducer } from 'react'
+
+
+export default function App() {
+  const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
+  return(
+    <div>
+      <p>{`name is ${state.name}`}</p>
+      <p>{`age is ${state.age}`}</p> 
+      <input 
+        type ="text"
+        value ={state.name}
+        onChange={ e => dispatch({ type: 'setName', name: e.currentTarget.value})
+      }
+      />
+      <input
+      type ='number'
+      value ={state.age}
+      onChange={ e => dispatch({ type:'setAge', age: e.currentTarget.value })} 
+      />
+    </div>
+  )
+}
+
+const INITIAL_STATE = { name: 'empty', age: 0 }
+const MAX_AGE = 50;
+function reducer(state, action){
+  switch(action.type) {
+    case 'setName':
+      return { ...state, name: action.name }
+    case 'setAge':
+      if (action.age > MAX_AGE){
+        return { ...state, age: MAX_AGE }
+      } else {
+        return { ...state, age: action.age }
+      }
+    default:
+      return state;
+  }
+}
+```
+
+
+
+- 상위 컴포넌트에서 다수의 상태값을 관리하는데 이때 자식 컴포넌트로 부터 발생한 이벤트에서 상위 컴포넌트의 상태값을 변경해야할 경우가 있다. 이를 위해서 상위 컴포넌트에서 트리의 깊은 곳까지 이벤트 처리 함수를 전달하곤한다.
+
+  **이때  useReducer , context api 를 사용하면 쉽게 전달할 수 있다.**
+
+```React
+import React, { useReducer } from 'react'
+
+export const ProfileDispatch = React.createContext(null);
+
+
+export default function App() {
+  const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
+  return(
+    <div>
+      <p>{`name is ${state.name}`}</p>
+      <p>{`age is ${state.age}`}</p> 
+      <ProfileDispatch.Provider value = {dispatch}>
+      {/* 필요한 곳에서 dispatch 함수를 통해 값을 변경할 수 있을 것이다. */}
+          <SomeComponent />
+      </ProfileDispatch.Provider>
+    </div>
+  )
+}
+
+const INITIAL_STATE = { name: 'empty', age: 0 }
+function reducer(state, action){
+  switch(action.type) {
+    case 'setName':
+      return { ...state, name: action.name }
+    case 'setAge':
+      if (action.age > MAX_AGE){
+        return { ...state, age: MAX_AGE }
+      } else {
+        return { ...state, age: action.age }
+      }
+    default:
+      return state;
+  }
+}
+```
+
+
+
+#### useImperativeHandle
+
+> 클래스형 컴포넌트의 부모 컴포넌트는 ref 객체를 통해서 자식 컴포넌트의 메서드를 호출 할 수 있다. (의존성이 생기지만 종종 사용해야하는 경우가 있다.)
+>
+> 그러나 종종 사용해야하는 경우가 있다. 이럴 때 사용 !
+>
+> 마치 함수형 컴포넌트에도 멤버 변수나 멤버 함수가 있는 것처럼 만들 수 있다.
+
+```react
+// useImperativeHandle1.js
+import React, { forwardRef, useState, useImperativeHandle } from 'react'
+
+function Profile(_, ref) {
+    const [name, setName ] = useState('mike')
+    const [age, setAge ] = useState(0)
+
+    useImperativeHandle(ref, () => ({
+        addAge: value => setAge(age+value),
+        getNameLength: () => name.length
+    }))
+    return (
+        <div>
+            <p>{`name is ${name}`}</p>
+            <p>{`age is ${age}`}</p>
+        </div>
+    )
+
+}
+export default forwardRef(Profile)
+
+```
+
+```react
+// useImperativeHandle2.js
+
+import React, { useRef } from 'react';
+import Profile from './useImperativeHandle1'
+
+export default function App() {
+    const profileRef = useRef();
+    const onClick = () => {
+        // 자식 컴포넌트 함수 참조
+        if(profileRef.current) {
+            console.log('current name length:', profileRef.current.getNameLength())
+            profileRef.current.addAge(5)
+        }
+    }
+    return(
+        <div>
+            <Profile ref ={profileRef} />
+            <button onClick ={onClick}> add age 5 </button>
+        </div>
+    )
+}
+```
+
+
+
+#### useLayoutEffect
+
+> useEffect 훅은 입력된 부수효과 함수는 렌더링 결과가 반영된 후 비동기로 호출됩니다.
+>
+> 하지만, useLayoutEffect 훅은 동기로 호출되게 됩니다. 렌더링 결과가 돔에 반영된 직후에 바로 호출됨.
+>
+> 부수효과 연산을 많이하면 브라우저가 먹통이 될 가능성 큰 이점이 있다.
+>
+> 그럼에도 사용하는 경우는 ! **렌더링 직후에 돔 요소 값을 읽어들이는 경우, 조건에 따라 컴포넌트를 다시 렌더링 할 경우**
+
+
+
+```react
+import React, { useState, useLayoutEffect } from 'react';
+
+export default function App() {
+    const [width, setWidth] = useState(200)
+    // 깜빡깜빡 거리는 이유
+    // 500 보다 큰값이 입력된 후 다시 렌더링이 되면서 다시 500으로 렌더링 함
+    
+    // useEffect(()=> {
+    //     if(width > 500) {
+    //         setWidth(500)
+    //     }
+    // },[ width ])
+
+
+    // 리액트가 렌더링을 하고 실제 돔에 반영은 했지만, 브라우저가 화면을 그리기 전에 동기로 실행 
+    // 500으로 렌더링하고 브라우저에 그린다.
+    // 연산량이 많으면 과부하가 생김 그래서 성능상 useEffect 사용하는 것이 좋다 useRef 와 같이 사용! 아래 코드 참고
+    useLayoutEffect(()=> {
+        if(width > 500) {
+            setWidth(500)
+        }
+    },[ width ])
+    return(
+        <div>
+            <div style ={{ width, height: 100, backgroundColor: 'green'}}></div>
+            <button onClick={() => {
+                const value = Math.floor(Math.random() * 499 + 1)
+                setWidth(value)
+            }}>500 이하</button>
+            <button onClick={() => {
+                const value = Math.floor(Math.random() * 500 + 501)
+                setWidth(value)
+            }}>500 이상</button>
+        </div>
+    )
+}
+```
+
+
+
+```react
+import React, { useState, useEffect } from 'react';
+
+export default function App() {
+    const [width, setWidth] = useState(200)
+    const boxRef = useRef()
+    useEffect(()=> {
+        if(width > 500) {
+            setWidth(500)
+        }
+    },[ width ])
+    return(
+        <div>
+            <div ref = {boxRef} 
+              style ={{ width, height: 100, backgroundColor: 'green'}}></div>
+            <button onClick={() => {
+                const value = Math.floor(Math.random() * 499 + 1)
+                setWidth(value)
+            }}>500 이하</button>
+            <button onClick={() => {
+                const value = Math.floor(Math.random() * 500 + 501)
+                setWidth(value)
+            }}>500 이상</button>
+        </div>
+    )
+}
+```
 

@@ -9,19 +9,7 @@
 
   - batchedUpdates : 외부에서 호출 할 경우에 배치로 다루기 위함 
 
-  #### **useEffect** 
-
-  > 컴포넌트가 **렌더링된 후에 호출** 
-
-  - 렌더링 결과가 실제 돔에 반영되고 비동기로 호출된다.
-
-  ```
-  useEffect(()=> {
-  }, []) // 의존성 배열 
-  ```
-
-  - 의존성 배열에서는 부수 효과 함수에서 사용한 변수를 잘 봐야함
-    - 컴포넌트의 함수값, 지역변수, 지역함수 .. 등등 
+  
 
 - 훅도 블럭처럼 관리할 수 있다.
 
@@ -44,8 +32,82 @@
     
 
   - 훅은 함수형 컴포넌트 또는 커스텀 훅 안에서만 호출되어야 한다.
-  
-  
+
+#### **useEffect** 
+
+> 컴포넌트가 **렌더링된 후에 호출** 
+
+- 렌더링 결과가 실제 돔에 반영되고 비동기로 호출된다.
+
+```
+useEffect(()=> {
+}, []) // 의존성 배열이 빈배열일 경우 -> 마운트된 후에 한 번만 호출되도록 한다 
+```
+
+-  의존성 배열의 내용이 변경되었을 경우 부수 효과 함수가 실행된다. 
+- 의존성 배열에서는 부수 효과 함수에서 사용한 변수를 잘 봐야함
+  - 컴포넌트의 함수값, 지역변수, 지역함수 .. 등등 
+
+- useEffect 훅에서 async / await 함수 사용
+
+**useEffect 훅에서 부수 효과함수를 async / await 함수로 만들면 오류가 발생한다.** 
+
+왜냐하면 부수 효과 함수는 함수만 반환할 수 있는데 async / await 함수는 Promise 객체를 반환하기 때문이다.
+
+```react
+useEffect(async () => {
+  const data = await fetchUser(userId);
+  setUser(data);
+}, [userId])
+```
+
+ async / await 함수 사용하기 위해서는 부수효과 함수 내부에 async / await 함수를 만들어 호출하면 된다.
+
+```react
+  useEffect(() => {
+    async function fetchAndSetUser() {
+      const data = await fetchUser(userId);
+      setUser(data);
+    }
+    fetchAndSetUser();
+  }, [userId]);
+```
+
+- useEffect 훅 밖에서 fetchAndSetUser 함수가 필요한 경우
+
+개발을 하다보면 useEffect 안의 함수를 훅 밖으로 빼야하는 상황이 있다. 
+
+```react
+  async function fetchAndSetUser(value) {
+    const data = await fetchUser(userId);
+    setUser(data);
+  }
+
+  useEffect(() => {
+    fetchAndSetUser(true);
+  }, [fetchAndSetUser]);
+
+  return <button onClick={() => fetchAndSetUser(false)}>더보기</button>;
+```
+
+fetchAndSetUser 함수를 useEffect 훅 밖으로 빼내 작성했다. 
+
+이제 훅 내부에서 fetchAndSetUser 함수를 사용하므로 의존성 배열에 추가해준다.
+
+그런데 fetchAndSetUser 함수는 렌더링할 때마다 갱신되므로 결과적으로 fetchAndSetUser 함수는 렌더링을 할 때마다 호출된다. 이 문제를 해결하려면 fetchAndSetUser 함수가 필요할 때만 갱싱되도록 해야한다. **이럴 때 useCallback을 사용한다.**
+
+```react
+  const fetchAndSetUser = useCallback(async () => {
+    const data = fetchUser(userId);
+    setUser(data);
+  }, [userId]);
+```
+
+이제 fetchAndSetUser 함수는 userId 값이 변경될 때만 갱신된다.
+
+
+
+
 
 #### useMemo
 
@@ -315,7 +377,6 @@ export default function App() {
 
     // 리액트가 렌더링을 하고 실제 돔에 반영은 했지만, 브라우저가 화면을 그리기 전에 동기로 실행 
     // 500으로 렌더링하고 브라우저에 그린다.
-    // 연산량이 많으면 과부하가 생김 그래서 성능상 useEffect 사용하는 것이 좋다 useRef 와 같이 사용! 아래 코드 참고
     useLayoutEffect(()=> {
         if(width > 500) {
             setWidth(500)
@@ -337,7 +398,7 @@ export default function App() {
 }
 ```
 
-
+- 연산량이 많으면 과부하가 생김 그래서 성능상 useEffect 사용하는 것이 좋다 useRef 와 같이 사용! 아래 코드 참고
 
 ```react
 import React, { useState, useEffect } from 'react';
@@ -365,5 +426,35 @@ export default function App() {
         </div>
     )
 }
+```
+
+
+
+
+
+#### useDebugValue
+
+> 리액트 개발자 도구에 좀 더 풍부한 정보를 제공할 수 있다. 즉, 디버그할때 편하다
+
+```react
+import { useState, useDebugValue } from 'react';
+
+export default function useChangeAppState() {
+    const [state, setState ] = useState(STATE_START);
+    const next = () => setState(state === STATE_STOP ? STATE_START : state+1)
+    useDebugValue(
+        state === STATE_START
+        ? 'start'
+        : state === STATE_RUNNING
+        ? 'running'
+        : 'stop',
+    )
+    return [ state, next]
+}
+export const STATE_START = 0;
+export const STATE_RUNNING = 1;
+export const STATE_STOP = 2;
+
+
 ```
 

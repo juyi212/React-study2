@@ -7,7 +7,7 @@ export default function App() {
   const [V1, setV1] = useState(0)
   // 이렇게 함수를 입력해서 속성값으로 전달할 때는 이 컴포넌트가 랜더링 될때마다 새로운 함수가 
   // 생성되고 랜더링 되서 자식 컴포넌트인 useedit은 값이 변경이 안되더라도 불필요하게 랜더링 값을 받아야한다
-  // 이럴때 useCallback 함수를 사용한다
+  // 이럴때 useCallback 함수를 사용한다. 의존성 배열 사용 
   const onSave = useCallback(() => {saveToServer((name, age), [name, age])})
   return(
     <div>

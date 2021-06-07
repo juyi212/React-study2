@@ -107,8 +107,6 @@ fetchAndSetUser 함수를 useEffect 훅 밖으로 빼내 작성했다.
 
 
 
-
-
 #### useMemo
 
 > 계산량이 많은 함수의 반환값을 재활용하는 용도로 사용
@@ -457,4 +455,104 @@ export const STATE_STOP = 2;
 
 
 ```
+
+
+
+
+
+### 의존성 배열을 없애는 방법
+
+> 의존성 배열은 사용하지 않는 것이 좋다. 에러의 원인이 되고 관리하는데 생각보다 많은 시간과 노력이 필요하다.
+
+#### 부수 효과 함수 내에서 분기 처리하기
+
+의존성 배열을 작성하지 않고 부수 효과 함수 내에서 실행 시점을 조절할 수 있다.
+
+```react
+function profile({userId}) {
+  const [user, setUser] = useState();
+  async function fetchAndSetUser(needDetail) {
+    const data = await fetchUser(userId, needDetail)
+    setUser(data)
+  }
+    useEffect(() => {
+    if (!user || user.id !== userId) {
+      fetchAndSetUser(false);
+    }
+  });
+}
+```
+
+부수 효과 함수 내에서 if문으로 fetchAndSetUser 호출 시점을 관리한다.
+
+#### useReducer 활용하기
+
+여러 상태 값을 참조하면서 값을 변경할 때는 useReducer 훅을 사용하는게 좋다.
+
+예를 들어 타이머에서 시간이 흐를 때 시, 분, 초 세 가지 상태 값을 참조하면서 값을 변경한다.
+
+```react
+function Timer({ initialTotalSeconds }) {
+  const [hour, setHour] = useState(Math.floor(initialTotalSeconds / 3600));
+  const [minute, setMinute] = useState(Math.floor((initialTotalSeconds & 3600) / 60));
+  const [second, setSecond] = useState(initialTotalSeconds % 60);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (second) {
+        setSecond(second - 1);
+      } else if (minute) {
+        // minute가 바뀌면
+        setMinute(minute - 1);
+        setSecond(59);
+      } else if (hour) {
+        setHour(hour - 1);
+        setMinute(59);
+        setSecond(59);
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [hour, minute, second]);
+
+  return <div>{`${hour} : ${minute} : ${second}`}</div>;
+}
+```
+
+에서
+
+```react
+function Timer({ initialTotalSeconds }) {
+  const [state, dispatch] = useReducer(reducer, {
+    hour: Math.floor(initialTotalSeconds / 3600),
+    minute: Math.floor((initialTotalSeconds & 3600) / 60),
+    second: initialTotalSeconds % 60,
+  });
+  const { hour, minute, second } = state;
+
+  useEffect(() => {
+    const id = setInterval(() => dispatch(state), 1000);
+    return () => clearInterval(id);
+  });
+
+  return <div>{`${hour} : ${minute} : ${second}`}</div>;
+}
+
+function reducer(state) {
+  const { hour, minute, second } = state;
+
+  if (second) {
+    return { ...state, second: second - 1 };
+  } else if (minute) {
+    return { ...state, minute: minute - 1, second: 59 };
+  } else if (hour) {
+    return { ...state, hour: hour - 1, minute: 59, second: 59 };
+  } else {
+    return state;
+  }
+}
+```
+
+세 개의 상태 값은 useReducer 훅으로 관리한다.
+리액트에서 dispatch는 변하지 않는 값(항상 고정된 값)이므로 의존성 배열에서 제거할 수 있다.
+**useEffect 내부에서는 무슨 일이 일어났는지 명시만 할 뿐, 상태 값을 직접 가져다 사용하지 않는다. 이렇게 하면 useEffect는 컴포넌트 내부의 어떤 상태 값도 사용하지 않는다.**
 

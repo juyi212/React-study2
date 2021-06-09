@@ -227,3 +227,111 @@ immer를 사용했기 때문에 push 메서드를 사용해도 기존의 상태 
 
 
 
+### react-redux 패키지 사용 
+
+```
+npm install react-redux 
+```
+
+Provider 컴포넌트 하위에 있는 컴포넌트는 리덕스의 상태 값이 변경되면 자동으로 컴포넌트 함수가 호출되도록 할 수 있다. store 객체를 Provider의 속성 값으로 전달.
+
+```react
+import store from './common/store'
+import {Provider} from 'react-redux'
+
+ReactDOM.render(
+  <Provider store={store}>
+    <div>
+      <FriendMain />
+      <TimeLineMian />
+    </div>
+  </Provider>,
+  document.getElementById('root')
+);
+
+```
+
+
+
+#### useSelector, useDispatch
+
+```react
+import { useSelector, useDispatch } from 'react-redux';
+// ...
+  const friends = useSelector((state) => state.friend.friends);
+  const dispatch = useDispatch();
+```
+
+**useSelector** 훅에 입력되는 함수를 선택자 함수라고 하며, 이 함수가 반환하는 값이 훅의 반환값으로 사용된다. useSelector **훅은 리덕스의 상태 값이 변경되면 이전 반환 값과 새로운 반환 값을 비교**. 두 값이 다른 경우에만 컴포넌트를 다시 렌더링한다.
+
+**useDispatch** 훅은 액션을 발생시키는 dispatch 함수를 반환한다.
+
+*useSelector 사용시 여러 상태 값을 반환 할때의 경우 shallowEqual 을 사용하여 랜더링이 계속 되는 것을 방지하는 방법도 있음.*
+
+
+
+#### reselect 패키지
+
+리덕스에서 저장된 데이터를 화면에 보여줄 때는 다양한 형식으로 가공할 필요가 있다. (정렬, 필터 등..)
+
+reselect 패키지는 원본 데이터를 다양한 형태로 가공해서 사용할 수 있도록 도와준다.
+
+선택자 함수를 분리해주는 기능도 갖고 있다.
+
+```
+npm install reselect
+```
+
+
+
+```react
+// state/selector.js
+
+import { createSelector } from 'reselect';
+
+
+const getFriends = state => state.friend.friends;
+export const getAgeLimit = state => state.friend.ageLimit;
+export const getShowLimit = state => state.friend.showLimit;
+
+export const getFriendsWithAgeLimit = createSelector(
+	[getFriends, getAgeLimit],
+  // 선택자 함수 
+  // 위에서 각각 반환하는 값들로 작성
+  (friends, ageLimit) => friends.filter(item => item.age <= ageLimit),
+  // 반환되는 값들이 변경 되었을 때만 filter을 실행한다, 아니면 그전에 반환된 값들을 사용한다.
+)
+
+export const getFriendsWithAgeLimit = createSelector(
+	[getFriendsWithAgeLimit, getShowLimit],
+  // 선택자 함수 
+  // 위에서 각각 반환하는 값들로 작성
+  (friendWithAgeLimit, showLimit) => friendWithAgeLimit.slice(0, showLimit)
+)
+```
+
+**createSelector 함수를 이용해서 선택자 함수를 만들면 메모이제이션 기능이 동작 가능**
+
+코드가 복잡하다면 selector.js 로 분리해서 사용하자 !
+
+```react
+import { getAgeLimit,getShowLimit,  getFriendsWithAgeLimit, getFriendsWithAgeShowLimit} from '../state/selector';
+
+//...
+
+export default function FriendMain() {
+  const [ageLimit, showLimit, friendWIthAgeLimit, friendWithAgeShowLimit ] =
+        useSelector(
+        	state => [
+            getAgeLimit(state),
+            getShowLimit(state),
+            getFriendsWithAgeLimit(state),
+  					getFriendsWithAgeShowLimit(state)
+          ],
+          shallowEqual,
+        )
+}
+```
+
+ 하지만, selector 값이 리덕스 값이 아니고 props 로 넘어오는 속성값일때는 메모이제이션 기능이 동작하지 않기 때문에 사용하지 말자.
+
